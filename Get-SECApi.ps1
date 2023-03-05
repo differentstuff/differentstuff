@@ -3,11 +3,14 @@
 # https://www.powershellgallery.com/packages/ImportExcel/6.0.0/Content/Export-Excel.ps1
 # https://www.powershellgallery.com/packages/ImportExcel/5.3.2/Content/New-ExcelChart.ps1
 
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser -ErrorAction SilentlyContinue
+
 # should be permanent parameter
 [PSCustomObject]$defaultHeader = @{"User-Agent" =  "EZ Financial Services ezadminAAB@ezfinancials.com"} #modify as needed => must comply SEC & Laws
 [string]$defaultTaxonomy = "us-gaap" # only tested with us-gaap
 [string]$defaultCurrecy = "USD" # only tested with USD
-[string]$defaultCIK = "0001640147" #  => https://www.sec.gov/edgar/searchedgar/cik (0001579914 = random CIK as test)
+[string]$defaultCIK = "0001318605" #  => https://www.sec.gov/edgar/searchedgar/cik (0001579914, 0001318605, 0001640147 = random CIK as test)
+[string]$PWDonStart = "C:\Temp\Results"
 
 # should be variable parameter
 [string]$defaultFileName = "Report" # will append: "-cik000123456"
@@ -37,8 +40,8 @@ function getCompanyConcept(){
     [Parameter(Mandatory = $False)]
     [string]$taxonomy = $defaultTaxonomy,
     # statement you're looking for
-    [Parameter (Mandatory = $False)]
-    [string]$tag = $listOfAllFilings.One
+    [Parameter (Mandatory = $true)]
+    [string]$tag
     )
     
 
@@ -49,7 +52,13 @@ function getCompanyConcept(){
     [string]$newCIK = "CIK" + $cik
 
 # request
-    [PSCustomObject]$responseGetCompanyConcept = Invoke-RestMethod "https://data.sec.gov/api/xbrl/companyconcept/$newCIK/$taxonomy/$newTag" -Method "GET" -Headers $header
+    try{
+        [PSCustomObject]$responseGetCompanyConcept = Invoke-RestMethod "https://data.sec.gov/api/xbrl/companyconcept/$newCIK/$taxonomy/$newTag" -Method "GET" -Headers $header
+    }
+    catch [System.Net.WebException],[System.IO.IOException] {
+        "Filing not found"
+        continue
+    }
 
 # the end
     return $responseGetCompanyConcept
@@ -174,13 +183,13 @@ $listOfAllFilings = @{
 
 # option: append date to filename
     if($defaultAppendDateToFilename -eq 2){
-        [string]$xlTempFile = "$PWD\$defaultFileName-" + "cik" + $defaultCIK + "-" + (Get-Date -Format "ddMMyyyy-HHmm") + ".xlsx"
+        [string]$xlTempFile = "$PWDonStart\$defaultFileName-" + "cik" + $defaultCIK + "-" + (Get-Date -Format "ddMMyyyy-HHmm") + ".xlsx"
         }
     if($defaultAppendDateToFilename -eq 1){
-        [string]$xlTempFile = "$PWD\$defaultFileName-" + "cik" + $defaultCIK + "-" + (Get-Date -Format "ddMMyyyy") + ".xlsx"
+        [string]$xlTempFile = "$PWDonStart\$defaultFileName-" + "cik" + $defaultCIK + "-" + (Get-Date -Format "ddMMyyyy") + ".xlsx"
         }
     if($defaultAppendDateToFilename -eq 0){
-        [string]$xlTempFile = "$PWD\$defaultFileName-" + "cik" + $defaultCIK + ".xlsx"
+        [string]$xlTempFile = "$PWDonStart\$defaultFileName-" + "cik" + $defaultCIK + ".xlsx"
         }
 
 # Runtime
@@ -233,9 +242,13 @@ foreach($oneResultOfAllTags in $allResultOfAllTags){
         }
 
     # export to excel
+    try{
     exportToExcel -exportFileName $xlTempFile -exportTitle ($resultOfAllTags.($oneResultOfAllTags.Name).label) -exportWorksheetName ($oneNameForThisResult) -exportData $exportData
-
-    # done
-    Invoke-Expression "Write-Host -ForegroundColor green "ok for:" , ($resultOfAllTags.($oneResultOfAllTags.Name).label)"
-
     }
+    catch{
+         Write-Host -ForegroundColor red "not ok for:" , ($resultOfAllTags.($oneResultOfAllTags.Name).label)
+    }
+    finally{
+        Write-Host -ForegroundColor green "ok for:" , ($resultOfAllTags.($oneResultOfAllTags.Name).label)
+    }
+}
