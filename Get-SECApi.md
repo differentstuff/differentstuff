@@ -7,9 +7,9 @@ Beforehand it will filter "double data" in the form of:
 
 # install
 
-download the script
-edit personal settings (can be found on top of script)
-run the script with powershell
+1. download the script
+2. edit personal settings (can be found on top of script)
+3. run the script with powershell
 
 # use
 
