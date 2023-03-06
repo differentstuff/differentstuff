@@ -17,7 +17,7 @@ has only been used in Powershell ISE until now.
 Doesn't run perfectly yet
 
 ## info
-when running the script it creates an Excel file in $pwd (Current Directory).
+when running the script it creates an Excel file (currently in C:\Temp\Reports\).
 
 this script has not been optimized on every stock. 
 errors may arrive if certain data is not found that has not yet been tested.
