@@ -1,7 +1,11 @@
 # description
-Request SEC (Security and Exchange Commission) Data via their API-URL
+
+<pre>
+Request SEC (Security and Exchange Commission) Data via their API-URL.
 This script should request data from https://data.sec.gov/api/xbrl (in different endpoints) and export them to excel.
 Beforehand it will filter "double data" in the form of:
+</pre>
+
 - reports will be reduced to one per filing date. if the same date is found in multiple filings, only the newest filing will be exported.
 > default setting: the "most recent" filing number (date) should be the most correct one. older values will be replaced by newer values (filing dates).
 
