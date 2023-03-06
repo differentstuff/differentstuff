@@ -3,13 +3,19 @@
 # https://www.powershellgallery.com/packages/ImportExcel/6.0.0/Content/Export-Excel.ps1
 # https://www.powershellgallery.com/packages/ImportExcel/5.3.2/Content/New-ExcelChart.ps1
 
-Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser -ErrorAction SilentlyContinue
+
+function run-Everything(){
+
+    param(
+    # default header by SEC
+    [Parameter(Mandatory = $True)]
+    [string]$defaultCIK = "0001559720"
+    )
 
 # should be permanent parameter
 [PSCustomObject]$defaultHeader = @{"User-Agent" =  "EZ Financial Services ezadminAAB@ezfinancials.com"} #modify as needed => must comply SEC & Laws
 [string]$defaultTaxonomy = "us-gaap" # only tested with us-gaap
 [string]$defaultCurrecy = "USD" # only tested with USD
-[string]$defaultCIK = "0001318605" #  => https://www.sec.gov/edgar/searchedgar/cik (0001579914, 0001318605, 0001640147 = random CIK as test)
 [string]$PWDonStart = "C:\Temp\Results"
 
 # should be variable parameter
@@ -21,7 +27,7 @@ Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser -ErrorAction Sile
 [string]$defaultChartStyle = "Line"
 [int]$defaultTitleSize = 30
 [int]$defaultStartRow = 20
-[bool]$defaultdeleteExcelFileBeforeFirstRun = 0 # 0=off 1=on //recommanded:0
+[bool]$defaultdeleteExcelFileBeforeFirstRun = 1 # 0=off 1=on //recommanded:0
 
 # functions
 
@@ -32,19 +38,18 @@ function getCompanyConcept(){
     param(
     # default header by SEC
     [Parameter(Mandatory = $False)]
-    [PSCustomObject]$header = $defaultHeader,
+        [PSCustomObject]$header = $defaultHeader,
     # cik of company
     [Parameter(Mandatory = $False)]
-    [string]$cik = $defaultCIK,
+        [string]$cik = $defaultCIK,
     # tested with us-gaap
     [Parameter(Mandatory = $False)]
-    [string]$taxonomy = $defaultTaxonomy,
+        [string]$taxonomy = $defaultTaxonomy,
     # statement you're looking for
     [Parameter (Mandatory = $true)]
-    [string]$tag
+        [string]$tag
     )
     
-
 # modify tag
     [string]$newTag = $tag + ".json"
 
@@ -56,7 +61,7 @@ function getCompanyConcept(){
         [PSCustomObject]$responseGetCompanyConcept = Invoke-RestMethod "https://data.sec.gov/api/xbrl/companyconcept/$newCIK/$taxonomy/$newTag" -Method "GET" -Headers $header
     }
     catch [System.Net.WebException],[System.IO.IOException] {
-        "Filing not found"
+        [PSCustomObject]$responseGetCompanyConcept = $null
         continue
     }
 
@@ -71,7 +76,7 @@ function getUnique{
 
     param(        
         [Parameter(Mandatory = $True)]
-        [PSCustomObject]$inputObject
+            [PSCustomObject]$inputObject
         )
 
     # create dummy
@@ -106,6 +111,8 @@ function exportToExcel {
         # default Title
         [Parameter(Mandatory = $False)]
             [string]$exportTitle = $defaultTitle,
+        [Parameter(Mandatory = $False)]
+            [string]$exportChartTitle = "",
         # default Worksheet Name
         [Parameter(Mandatory = $False)]
             [string]$exportWorksheetName = $defaultWorksheetName,
@@ -193,7 +200,6 @@ $listOfAllFilings = @{
         }
 
 # Runtime
-
 # create dummy
 $resultOfAllTags = [PSCustomObject]{}
 $allResultOfAllTags = [PSCustomObject]@()
@@ -205,11 +211,17 @@ foreach($anyTag in $listOfAllTags.GetEnumerator()){
     $getCompanyConceptResult = [PSCustomObject]@()
 
     # get data
-    $getCompanyConceptResult = getCompanyConcept -tag ($anyTag.key)
+    $getCompanyConceptResult = getCompanyConcept -tag ($anyTag.key) -header $defaultHeader -cik $defaultCIK -taxonomy $defaultTaxonomy
 
     # add to final object
-    Add-Member -InputObject $resultOfAllTags -NotePropertyName ($getCompanyConceptResult.tag) -NotePropertyValue ($getCompanyConceptResult)
+    Add-Member -InputObject $resultOfAllTags -NotePropertyName ($getCompanyConceptResult.tag) -NotePropertyValue ($getCompanyConceptResult) -Force
 
+    }
+
+# stop, if no results
+if((Get-Member -InputObject $resultOfAllTags -MemberType NoteProperty).count -eq 0){
+    Write-Host -ForegroundColor DarkBlue -BackgroundColor Cyan "No Results captured"
+    break
     }
 
 # get all results
@@ -243,12 +255,36 @@ foreach($oneResultOfAllTags in $allResultOfAllTags){
 
     # export to excel
     try{
-    exportToExcel -exportFileName $xlTempFile -exportTitle ($resultOfAllTags.($oneResultOfAllTags.Name).label) -exportWorksheetName ($oneNameForThisResult) -exportData $exportData
-    }
+        $exportChartTitle = ($resultOfAllTags.($oneResultOfAllTags.Name).entityName)
+        $exportTitle = ($resultOfAllTags.($oneResultOfAllTags.Name).label)
+        exportToExcel -exportFileName $xlTempFile -exportTitle $exportTitle -exportWorksheetName $oneNameForThisResult -exportData $exportData -exportChartTitle $exportChartTitle
+        }
     catch{
-         Write-Host -ForegroundColor red "not ok for:" , ($resultOfAllTags.($oneResultOfAllTags.Name).label)
-    }
+         Write-Host -ForegroundColor red "not ok for:" , $exportTitle
+        }
     finally{
-        Write-Host -ForegroundColor green "ok for:" , ($resultOfAllTags.($oneResultOfAllTags.Name).label)
-    }
+        Write-Host -ForegroundColor green "ok for:" , $exportTitle
+        }
 }
+
+}
+
+# put all CIK numbers in here // => https://www.sec.gov/edgar/searchedgar/cik 
+# ("CIK-Number" = "Company-Name")
+$allCIKs = @{
+    "0001559720" = "AirBNB"
+    "0000796343" = "Adobe"
+    "0001045810" = "NVIDIA CORP"
+    "0001535527" = "CROWDSTRIKE HOLDINGS, INC."
+    "0001018724" = "AMAZON com inc"
+    "0001640147" = "SNOWFLAKE"
+    "0001886785" = "TSMC ARIZONA CORP"
+    "0001800227" = "IAC INC."
+    "0001677576" = "INNOVATIVE INDUSTRIAL PROPERTIES INC"
+    }
+
+# run for every CIK number
+foreach($everyCIK in $allCIKs.GetEnumerator()){
+    # run for every CIK number
+    run-Everything -defaultCIK $everyCIK.Value
+    }
