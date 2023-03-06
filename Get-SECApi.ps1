@@ -9,7 +9,7 @@ function run-Everything(){
     param(
     # default header by SEC
     [Parameter(Mandatory = $True)]
-    [string]$defaultCIK = "0001559720"
+    [string]$defaultCIK
     )
 
 # should be permanent parameter
