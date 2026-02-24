@@ -11,7 +11,7 @@ Developing Security Systems, AI-powered workflows, and automating time-consuming
 | AI/LLM | LLM applications, Agentic Frameworks, RAG pipelines |
 | Automation | Automated Workflows, OCR, Workload Reduction |
 | Development | Python tooling, Constraint Programming, Type Converters |
-| Windows Ecosystem | MS Graph integrations, PS7 advanced functions & custom classes |
+| Platforms | Windows Ecosystem, WSL, Docker, Cross-platform tooling |
 | Cognitive Space | Workspace design, Focus optimisation, Neurodivergent-friendly tooling |
 | Approach | Production-ready Design, Full-Stack Prototyping, Experimenting |
 
